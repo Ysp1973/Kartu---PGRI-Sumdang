@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Cetak Kartu PGRI</title>
+    
+    <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/id/e/e5/Logo_PGRI.png">
+    
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    
+    <style>
+        /* Style Bar Navigasi Atas */
+        .navbar {
+            background-color: #fbb034;
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            color: #000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar img {
+            height: 40px;
+            margin-right: 15px;
+        }
+        .navbar h1 {
+            font-size: 18px;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        /* Konten Utama */
+        body { font-family: 'Arial', sans-serif; background: #f0f0f0; margin: 0; }
+        .card-container { display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; padding: 20px; }
+        
+        /* Kartu Sisi Depan */
+        .card-front {
+            width: 500px; height: 310px;
+            background: linear-gradient(45deg, #d4a017, #fbb034);
+            border-radius: 15px; position: relative; border: 1px solid #999;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.2); overflow: hidden;
+        }
+        .header-text { text-align: center; margin-top: 10px; }
+        .header-text h2 { margin: 0; font-size: 24px; letter-spacing: 2px; }
+        .logo-card { position: absolute; top: 15px; left: 15px; width: 60px; }
+        
+        .photo-box {
+            position: absolute; top: 90px; left: 20px;
+            width: 100px; height: 130px; border: 2px solid #fff;
+            background: #ddd; background-size: cover; background-position: center;
+        }
+        
+        .info-data {
+            position: absolute; top: 85px; left: 140px;
+            font-size: 14px; font-weight: bold; line-height: 1.6;
+        }
+        
+        .barcode-area {
+            position: absolute; bottom: 15px; left: 20px;
+            background: white; padding: 5px; height: 50px; border-radius: 3px;
+        }
+
+        /* Tombol Cetak */
+        .btn-print {
+            background: #000; color: #fff; border: none; padding: 10px 20px;
+            border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: auto;
+        }
+        .btn-print:hover { background: #333; }
+
+        @media print {
+            .no-print, .navbar { display: none; }
+            .card-container { padding: 0; gap: 50px; }
+            .card-front { box-shadow: none; page-break-inside: avoid; border: 0.5px solid #ccc; }
+        }
+    </style>
+</head>
+  <script>navigator.serviceWorker.register('sw.js');</script>
+<body>
+
+    <div class="navbar">
+        <img src="https://upload.wikimedia.org/wikipedia/id/e/e5/Logo_PGRI.png" alt="Logo PGRI">
+        <h1>Sistem Kartu Anggota Digital PGRI</h1>
+        <button class="btn-print" onclick="window.print()">CETAK SEMUA</button>
+    </div>
+
+    <div id="display-area" class="card-container">
+        </div>
+
+    <script>
+        // MASUKKAN URL GOOGLE APPS SCRIPT ANDA DI SINI
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbyvJPTos3TuSP1JIWSlJnj13yI0Jpu3ee2RvTXX_HDuX42L-WSDhnegakUOZ-9taXl4/exec"; 
+
+        async function loadCards() {
+            try {
+                const response = await fetch(scriptUrl);
+                const data = await response.json();
+                const container = document.getElementById('display-area');
+
+                data.forEach(row => {
+                    const cardId = row[0].toString().replace(/\s/g, ''); // Buat ID unik tanpa spasi
+                    const cardHtml = `
+                        <div class="card-front">
+                            <img src="https://upload.wikimedia.org/wikipedia/id/e/e5/Logo_PGRI.png" class="logo-card">
+                            <div class="header-text">
+                                <h2>P G R I</h2>
+                                <div style="font-size: 18px;">KARTU TANDA ANGGOTA</div>
+                            </div>
+                            <div class="photo-box" style="background-image: url('${row[3]}')"></div>
+                            <div class="info-data">
+                                <table>
+                                    <tr><td>NPA</td><td>: ${row[0]}</td></tr>
+                                    <tr><td>Nama</td><td>: ${row[1]}</td></tr>
+                                    <tr><td>Unit Kerja</td><td>: ${row[2]}</td></tr>
+                                    <tr><td>Berlaku</td><td>: ${row[4] || 'Selamanya'}</td></tr>
+                                </table>
+                            </div>
+                            <div class="barcode-area">
+                                <svg id="bc-${cardId}"></svg>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += cardHtml;
+                    
+                    // Generate Barcode
+                    setTimeout(() => {
+                        JsBarcode(`#bc-${cardId}`, row[0], {
+                            format: "CODE128",
+                            height: 30,
+                            width: 1.5,
+                            displayValue: true,
+                            fontSize: 10
+                        });
+                    }, 200);
+                });
+            } catch (error) {
+                console.error("Gagal mengambil data:", error);
+                document.getElementById('display-area').innerHTML = "<p>Gagal memuat data. Pastikan URL Apps Script benar dan sudah di-Deploy sebagai 'Anyone'.</p>";
+            }
+        }
+        loadCards();
+      <script>
+        // Mendaftarkan Service Worker agar bisa OFFLINE
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+            .then(() => console.log("Aplikasi Siap Digunakan Offline"))
+            .catch((err) => console.log("Gagal Register SW", err));
+        }
+    </script>
+</body>
+</html>
